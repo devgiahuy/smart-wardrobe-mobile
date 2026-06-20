@@ -6,6 +6,7 @@ export interface SaveOutfitItemReq {
   positionY: number;
   scale: number;
   layerOrder: number;
+  rotation?: number; // adding rotation because our canvas POC has it
 }
 
 export interface SaveOutfitReq {
@@ -23,6 +24,7 @@ export interface OutfitItemRes {
   positionY: number;
   scale: number;
   layerOrder: number;
+  rotation?: number;
 }
 
 export interface OutfitRes {

@@ -1,18 +1,18 @@
-import api from '@/lib/axios';
+import { apiClient, API_BASE_URL } from '@/lib/axios';
 import { APIResponse } from '@/types/api';
+import { secureStorage } from '@/lib/storage';
+import EventSource from 'react-native-sse';
 import { AIOutfitRecommendationReq, AIOutfitRecommendationRes, CreateChatSessionReq, ChatSessionRes } from '../types';
 
 export const aiApi = {
   getOutfitRecommendation: async (data: AIOutfitRecommendationReq): Promise<AIOutfitRecommendationRes> => {
-    // AI processing can take a while, increase timeout to 60 seconds
-    const res = await api.post<APIResponse<AIOutfitRecommendationRes>>('/ai/outfit-recommendations', data, {
-      timeout: 200000,
-    });
+    // Timeout extended inside axios if needed
+    const res = await apiClient.post<APIResponse<AIOutfitRecommendationRes>>('/ai/outfit-recommendations', data);
     return res.data.data!;
   },
 
   createChatSession: async (data: CreateChatSessionReq): Promise<ChatSessionRes> => {
-    const res = await api.post<APIResponse<ChatSessionRes>>('/ai/chat/sessions', data);
+    const res = await apiClient.post<APIResponse<ChatSessionRes>>('/ai/chat/sessions', data);
     return res.data.data!;
   },
 
@@ -21,71 +21,55 @@ export const aiApi = {
     message: string,
     onChunk: (text: string) => void,
     onDone: (fullText: string) => void,
-    onError: (error: Error) => void,
-    signal?: AbortSignal
+    onError: (error: Error) => void
   ) => {
-    try {
-      const response = await fetch(`/api/v1/ai/chat/sessions/${contextID}/messages/stream`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'text/event-stream',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ content: message }),
-        signal,
-      });
+    const token = await secureStorage.getItemAsync('accessToken');
+    
+    // In React Native, we use react-native-sse
+    const es = new EventSource(`${API_BASE_URL}/ai/chat/sessions/${contextID}/messages/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ content: message }),
+    });
 
-      if (!response.ok) {
-        const errBody = await response.json().catch(() => ({}));
-        throw new Error(errBody.message || 'Không thể kết nối đến máy chủ AI');
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('No readable stream available');
-
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let currentEvent = '';
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (trimmed === '') continue;
-
-          if (trimmed.startsWith('event:')) {
-            currentEvent = trimmed.replace('event:', '').trim();
-          } else if (trimmed.startsWith('data:')) {
-            const rawData = trimmed.replace('data:', '').trim();
-            let textChunk = '';
-            try {
-              textChunk = JSON.parse(rawData);
-            } catch {
-              textChunk = rawData;
-            }
-
-            if (currentEvent === 'chunk') {
-              onChunk(textChunk);
-            } else if (currentEvent === 'done') {
-              onDone(textChunk);
-              break;
-            }
-          }
+    es.addEventListener("chunk", (event: any) => {
+      if (event.data) {
+        let textChunk = '';
+        try {
+          textChunk = JSON.parse(event.data);
+        } catch {
+          textChunk = event.data;
         }
+        onChunk(textChunk);
       }
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        // Ignored, user canceled
+    });
+
+    es.addEventListener("done", (event: any) => {
+      if (event.data) {
+        let fullText = '';
+        try {
+          fullText = JSON.parse(event.data);
+        } catch {
+          fullText = event.data;
+        }
+        onDone(fullText);
       } else {
-        onError(error instanceof Error ? error : new Error('Unknown error'));
+        onDone('');
       }
-    }
+      es.close();
+    });
+
+    es.addEventListener("error", (event: any) => {
+      console.error('SSE Error', event);
+      onError(new Error(event.message || 'Stream error'));
+      es.close();
+    });
+
+    return () => {
+      es.close();
+    };
   },
 };

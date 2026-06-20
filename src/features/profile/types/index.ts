@@ -1,4 +1,4 @@
-import { Gender } from '@/common/enum';
+import { Gender } from '@/features/auth/types';
 
 export interface UserBodyMeasurementsRes {
   chestCm?: number;
@@ -60,11 +60,4 @@ export interface UpdateProfileReq {
   dateOfBirth?: string;
   address?: string;
   gender: Gender;
-}
-
-export interface ChangePasswordReq {
-  oldPassword: string;
-  newPassword: string;
-  confirmPassword: string;
-  logoutAllDevices: boolean;
 }

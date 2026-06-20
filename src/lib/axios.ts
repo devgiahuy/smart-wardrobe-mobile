@@ -1,25 +1,35 @@
-import axios, { AxiosError } from 'axios';
-import { toast } from 'sonner';
-import { ErrorResponse } from '@/types/api';
+import axios from 'axios';
+import { secureStorage } from './storage';
+import { useAuthStore } from '../store/useAuthStore';
 
-const api = axios.create({
-  // Point to Next.js proxy instead of direct backend
-  baseURL: '/api/v1',
-  timeout: 10000,
-  withCredentials: true,
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+
+export const apiClient = axios.create({
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Response interceptor
-let isRefreshing = false;
-let failedQueue: Array<{
-  resolve: (value?: unknown) => void;
-  reject: (reason?: any) => void;
-}> = [];
+// Request Interceptor: Attach Token
+apiClient.interceptors.request.use(
+  async (config) => {
+    const token = await secureStorage.getItemAsync('accessToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
-const processQueue = (error: any, token: string | null = null) => {
+// Response Interceptor: Handle 401 & Auto Refresh
+let isRefreshing = false;
+let failedQueue: Array<{ resolve: (value?: unknown) => void; reject: (reason?: any) => void }> = [];
+
+const processQueue = (error: Error | null, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);
@@ -30,91 +40,61 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
-api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
-  async (error: AxiosError<ErrorResponse>) => {
-    const originalRequest = error.config as any;
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
 
-    if (error.response) {
-      const isAuthError =
-        error.response.status === 401 ||
-        (error.response.status === 500 &&
-          (error.response.data?.message === "Vui lòng đăng nhập" ||
-            error.response.data?.detail === "Vui lòng đăng nhập" ||
-            error.response.data?.Detail === "Vui lòng đăng nhập" ||
-            error.response.data?.message === "Đã xảy ra lỗi hệ thống" ||
-            error.response.data?.detail === "Đã xảy ra lỗi hệ thống"
-          )
-        );
-
-      if (isAuthError && originalRequest && !originalRequest._retry && !originalRequest.url?.includes('/auth/login')) {
-        if (originalRequest.url?.includes('/auth/logout') || originalRequest.url?.includes('/auth/refresh-token')) {
-          return Promise.reject(error);
-        }
-
-        if (isRefreshing) {
-          return new Promise(function (resolve, reject) {
-            failedQueue.push({ resolve, reject });
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise(function (resolve, reject) {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = 'Bearer ' + token;
+            return apiClient(originalRequest);
           })
-            .then(() => {
-              return api(originalRequest);
-            })
-            .catch((err) => {
-              return Promise.reject(err);
-            });
-        }
-
-        originalRequest._retry = true;
-        isRefreshing = true;
-
-        try {
-          // Gọi API refresh token của BFF
-          await axios.post('/api/auth/refresh-token', {}, { baseURL: '' });
-          processQueue(null);
-          // Gọi lại request bị fail
-          return api(originalRequest);
-        } catch (err) {
-          processQueue(err, null);
-          const isLoginPage = typeof window !== 'undefined' && window.location.pathname.includes('/auth/login');
-          const isMeEndpoint = originalRequest.url?.endsWith('/me');
-
-          if (!isLoginPage && !isMeEndpoint) {
-            toast.error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
-            setTimeout(() => {
-              window.location.href = '/auth/login';
-            }, 1000);
-          }
-          return Promise.reject(err);
-        } finally {
-          isRefreshing = false;
-        }
+          .catch((err) => {
+            return Promise.reject(err);
+          });
       }
 
-      // Xử lý các lỗi khác có format ErrorResponse từ server
-      const errorData = error.response.data;
-      const errorMessage = errorData?.message || errorData?.detail;
-      const errorTitle = errorData?.title;
+      originalRequest._retry = true;
+      isRefreshing = true;
 
-      if (errorTitle && errorMessage) {
-        toast.error(errorTitle, { description: errorMessage });
-      } else if (errorTitle) {
-        toast.error(errorTitle);
-      } else if (errorMessage) {
-        toast.error(errorMessage);
-      } else if (error.response.status >= 500) {
-        toast.error('Lỗi máy chủ! Vui lòng thử lại sau.');
-      } else {
-        toast.error('Đã có lỗi xảy ra. Vui lòng thử lại.');
+      try {
+        const refreshToken = await secureStorage.getItemAsync('refreshToken');
+        if (!refreshToken) {
+          throw new Error('No refresh token');
+        }
+
+        const res = await axios.post(`${API_BASE_URL}/auth/refresh-token`, { refreshToken });
+        const { accessToken, refreshToken: newRefreshToken } = res.data;
+
+        await secureStorage.setItemAsync('accessToken', accessToken);
+        if (newRefreshToken) {
+          await secureStorage.setItemAsync('refreshToken', newRefreshToken);
+        }
+
+        apiClient.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+
+        processQueue(null, accessToken);
+        return apiClient(originalRequest);
+      } catch (refreshError) {
+        processQueue(refreshError as Error, null);
+        
+        // Refresh failed, logout user
+        await secureStorage.deleteItemAsync('accessToken');
+        await secureStorage.deleteItemAsync('refreshToken');
+        useAuthStore.getState().logout();
+        
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
       }
-
-    } else {
-      // Network error or timeout
-      toast.error('Không thể kết nối đến máy chủ.');
     }
+
     return Promise.reject(error);
   }
 );
-
-export default api;

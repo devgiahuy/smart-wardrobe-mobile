@@ -1,3 +1,5 @@
+import { WardrobeItemRes } from '../../wardrobe/types';
+
 export interface PaginationMetadata {
   limit: number;
   page: number;
@@ -11,12 +13,6 @@ export interface PostMediaRes {
   mediaUrl: string;
   publicId: string;
   sortOrder: number;
-}
-
-// Temporary inline or imported type to avoid circular/missing dependencies
-export interface WardrobeItemRes {
-  id: string;
-  [key: string]: unknown;
 }
 
 export interface PostItemRes {
@@ -72,6 +68,7 @@ export interface CommentRes {
   parentCommentId?: string;
   userId: string;
   username: string;
+  replies?: CommentRes[]; // for local state management
 }
 
 export interface AddCommentReq {

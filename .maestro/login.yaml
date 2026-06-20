@@ -1,0 +1,13 @@
+appId: com.smartwardrobe.mobile
+---
+- launchApp
+- assertVisible: "Đăng nhập"
+- tapOn:
+    id: "email-input"
+- inputText: "user@smartwardrobe.com"
+- tapOn:
+    id: "password-input"
+- inputText: "123456"
+- tapOn: "Đăng nhập"
+- assertVisible: "Tủ Đồ"
+- assertVisible: "Bộ phối"

@@ -1,4 +1,8 @@
-import { Gender } from '@/common/enum';
+export enum Gender {
+  MALE = 1,
+  FEMALE = 2,
+  OTHER = 3,
+}
 
 export interface LoginReq {
   loginName: string; // username or email
@@ -40,4 +44,14 @@ export interface ResetPasswordReq {
 export interface AuthTokenRes {
   accessToken: string;
   refreshToken?: string;
+}
+
+export interface UserRes {
+  id: string;
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl?: string;
+  roles?: string[];
 }

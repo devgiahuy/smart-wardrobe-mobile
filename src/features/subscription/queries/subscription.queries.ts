@@ -1,39 +1,51 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { subscriptionApi } from '../api/subscription.api';
-import { toast } from 'sonner';
 
-export const useDailyQuota = () => {
+export const subscriptionKeys = {
+  all: ['subscription'] as const,
+  plans: () => [...subscriptionKeys.all, 'plans'] as const,
+  my: () => [...subscriptionKeys.all, 'my'] as const,
+  quota: () => [...subscriptionKeys.all, 'quota'] as const,
+};
+
+export const useGetSubscriptionPlans = () => {
   return useQuery({
-    queryKey: ['subscription', 'daily-quota'],
-    queryFn: () => subscriptionApi.getDailyQuota(),
+    queryKey: subscriptionKeys.plans(),
+    queryFn: subscriptionApi.getSubscriptionPlans,
   });
 };
 
-export const useMySubscription = () => {
+export const useGetMySubscription = () => {
   return useQuery({
-    queryKey: ['subscription', 'me'],
-    queryFn: () => subscriptionApi.getMySubscription(),
+    queryKey: subscriptionKeys.my(),
+    queryFn: subscriptionApi.getMySubscription,
   });
 };
 
-export const useToggleAutoRenew = () => {
+export const useGetDailyQuota = () => {
+  return useQuery({
+    queryKey: subscriptionKeys.quota(),
+    queryFn: subscriptionApi.getDailyQuota,
+  });
+};
+
+export const useToggleAutoRenewMutation = () => {
   const queryClient = useQueryClient();
-  const { data: sub } = useMySubscription();
-
   return useMutation({
-    mutationFn: (newValue?: boolean) => {
-      if (newValue !== undefined) {
-        return subscriptionApi.toggleAutoRenew(newValue);
-      }
-      // Toggle to the opposite status, defaulting to false if not loaded
-      const currentStatus = sub?.isAutoRenewEnabled || sub?.IsAutoRenewEnabled || false;
-      return subscriptionApi.toggleAutoRenew(!currentStatus);
-    },
-    onSuccess: (res) => {
-      toast.success(res?.message || (res?.data ? 'Đã bật tự động gia hạn' : 'Đã tắt tự động gia hạn'));
-      // Invalidate the subscription query to refresh data
-      queryClient.invalidateQueries({ queryKey: ['subscription', 'me'] });
+    mutationFn: subscriptionApi.toggleAutoRenew,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: subscriptionKeys.my() });
     },
   });
 };
-export const useToggleAutoRenewMutation = useToggleAutoRenew; // alias for backwards compatibility
+
+export const useSubscribeToPlanMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: subscriptionApi.subscribeToPlan,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: subscriptionKeys.my() });
+      queryClient.invalidateQueries({ queryKey: subscriptionKeys.quota() });
+    },
+  });
+};

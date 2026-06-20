@@ -1,33 +1,52 @@
+import React from 'react';
 import { Tabs } from 'expo-router';
-import { Platform } from 'react-native';
-import { Shirt, PlusCircle, User } from 'lucide-react-native';
+import { useColorScheme } from '@/components/useColorScheme';
+import Colors from '@/constants/Colors';
+import { Shirt, Sparkles, Users, User } from 'lucide-react-native';
 
 export default function TabLayout() {
+  const colorScheme = useColorScheme();
+
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#000',
-        headerShown: true,
+        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        headerShown: false,
       }}>
       <Tabs.Screen
-        name="index"
+        name="wardrobe"
         options={{
           title: 'Tủ đồ',
-          tabBarIcon: ({ color }) => <Shirt color={color} size={24} />,
+          tabBarIcon: ({ color }) => <Shirt size={24} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="upload"
+        name="outfits"
         options={{
-          title: 'Thêm mới',
-          tabBarIcon: ({ color }) => <PlusCircle color={color} size={24} />,
+          title: 'Bộ phối',
+          tabBarIcon: ({ color }) => <Shirt size={24} color={color} />, // Will use a different icon like Layers or Image
         }}
       />
+      <Tabs.Screen
+        name="ai-stylist"
+        options={{
+          title: 'AI Stylist',
+          tabBarIcon: ({ color }) => <Sparkles size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="community"
+        options={{
+          title: 'Cộng đồng',
+          tabBarIcon: ({ color }) => <Users size={24} color={color} />,
+        }}
+      />
+
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Cá nhân',
-          tabBarIcon: ({ color }) => <User color={color} size={24} />,
+          title: 'Hồ sơ',
+          tabBarIcon: ({ color }) => <User size={24} color={color} />,
         }}
       />
     </Tabs>

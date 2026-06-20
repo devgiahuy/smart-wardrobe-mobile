@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "smartwardrobemobile",
+    "scheme": "smartwardrobe",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true
@@ -33,7 +33,10 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
-      ]
+      ],
+      "expo-secure-store",
+      "@sentry/react-native",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true

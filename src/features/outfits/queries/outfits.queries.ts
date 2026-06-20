@@ -1,64 +1,66 @@
-import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { outfitsApi } from '../api/outfits.api';
-import { toast } from 'sonner';
 
-export const OUTFIT_QUERY_KEYS = {
+export const outfitsKeys = {
   all: ['outfits'] as const,
-  lists: () => [...OUTFIT_QUERY_KEYS.all, 'list'] as const,
-  detail: (id: string) => [...OUTFIT_QUERY_KEYS.all, 'detail', id] as const,
+  lists: () => [...outfitsKeys.all, 'list'] as const,
+  list: (filters: string) => [...outfitsKeys.lists(), { filters }] as const,
+  details: () => [...outfitsKeys.all, 'detail'] as const,
+  detail: (id: string) => [...outfitsKeys.details(), id] as const,
 };
 
-export const useMyOutfits = () => {
+export const useGetMyOutfits = (limit: number = 20) => {
   return useInfiniteQuery({
-    queryKey: OUTFIT_QUERY_KEYS.lists(),
-    queryFn: ({ pageParam = 1 }) => outfitsApi.getMyOutfits({ page: pageParam as number, limit: 20 }),
+    queryKey: outfitsKeys.list('all'),
+    queryFn: ({ pageParam = 1 }) => outfitsApi.getMyOutfits({ page: pageParam, limit }),
     initialPageParam: 1,
     getNextPageParam: (lastPage) => {
-      if (lastPage.page < lastPage.totalPages) return lastPage.page + 1;
+      if (lastPage.page < lastPage.totalPages) {
+        return lastPage.page + 1;
+      }
       return undefined;
     },
+    staleTime: 1000 * 60 * 5,
   });
 };
 
-export const useOutfitDetail = (id: string, initialData?: any) => {
+export const useGetOutfitDetail = (id: string) => {
   return useQuery({
-    queryKey: OUTFIT_QUERY_KEYS.detail(id),
+    queryKey: outfitsKeys.detail(id),
     queryFn: () => outfitsApi.getOutfitDetail(id),
     enabled: !!id,
-    initialData,
+    staleTime: 1000 * 60 * 5,
   });
 };
 
-export const useCreateOutfit = () => {
+export const useCreateOutfitMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: outfitsApi.createOutfit,
-    onSuccess: (res) => {
-      queryClient.invalidateQueries({ queryKey: OUTFIT_QUERY_KEYS.lists() });
-      toast.success(res?.message || 'Lưu bộ phối đồ thành công!');
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: outfitsKeys.lists() });
     },
   });
 };
 
-export const useUpdateOutfit = () => {
+export const useUpdateOutfitMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => outfitsApi.updateOutfit(id, data),
-    onSuccess: (res, variables) => {
-      queryClient.invalidateQueries({ queryKey: OUTFIT_QUERY_KEYS.lists() });
-      queryClient.invalidateQueries({ queryKey: OUTFIT_QUERY_KEYS.detail(variables.id) });
-      toast.success(res?.message || 'Cập nhật bộ phối đồ thành công!');
+    mutationFn: ({ id, data }: { id: string; data: Parameters<typeof outfitsApi.updateOutfit>[1] }) =>
+      outfitsApi.updateOutfit(id, data),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: outfitsKeys.detail(variables.id) });
+      queryClient.invalidateQueries({ queryKey: outfitsKeys.lists() });
     },
   });
 };
 
-export const useDeleteOutfit = () => {
+export const useDeleteOutfitMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: outfitsApi.deleteOutfit,
-    onSuccess: (res) => {
-      queryClient.invalidateQueries({ queryKey: OUTFIT_QUERY_KEYS.lists() });
-      toast.success(res?.message || 'Đã xóa bộ phối đồ!');
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: outfitsKeys.lists() });
     },
   });
 };

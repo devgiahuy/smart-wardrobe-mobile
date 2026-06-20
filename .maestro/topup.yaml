@@ -1,0 +1,13 @@
+appId: com.smartwardrobe.mobile
+---
+- launchApp
+- assertVisible: "Hồ sơ"
+- tapOn: "Hồ sơ"
+- assertVisible: "Hồ Sơ"
+- tapOn: "Ví điện tử"
+- assertVisible: "Nạp Tiền"
+- tapOn: "Nạp Tiền"
+- assertVisible: "Thanh toán qua mã QR (PayOS)"
+- tapOn: "100.000 đ"
+- tapOn: "Tiếp Tục"
+- assertVisible: "Thanh toán PayOS"
