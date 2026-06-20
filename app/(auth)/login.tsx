@@ -1,150 +1,123 @@
-import React, { useState } from 'react';
-import { View, Text, KeyboardAvoidingView, Platform, ScrollView, Alert, TouchableOpacity } from 'react-native';
-import { Link, router } from 'expo-router';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Eye, EyeOff, Shirt } from 'lucide-react-native';
-
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { loginSchema, LoginFormData } from '@/features/auth/schemas/auth.schema';
-import { useLoginMutation } from '@/features/auth/queries/auth.queries';
-import { secureStorage } from '@/lib/storage';
-import { useAuthStore } from '@/store/useAuthStore';
-import { authApi } from '@/features/auth/api/auth.api';
+import React, { useState } from "react";
+import { View, Text, TextInput, Pressable, ScrollView } from "@/tw";
+import { ActivityIndicator } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import { authApi } from "@/features/auth/api/auth.api";
+import { useAuthStore } from "@/store/useAuthStore";
+import { secureStorage } from "@/lib/storage";
 
 export default function LoginScreen() {
-  const [showPassword, setShowPassword] = useState(false);
-  const loginMutation = useLoginMutation();
-  const setAuthUser = useAuthStore(state => state.login);
+  const router = useRouter();
+  const [loginName, setLoginName] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const { login } = useAuthStore();
 
-  const {
-    control,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      loginName: '',
-      password: '',
-    },
-  });
+  const handleLogin = async () => {
+    if (!loginName || !password) {
+      setError("Please enter both email and password.");
+      return;
+    }
 
-  const onSubmit = async (data: LoginFormData) => {
     try {
-      const res = await loginMutation.mutateAsync(data);
-      await secureStorage.setItemAsync('accessToken', res.accessToken);
-      if (res.refreshToken) {
-        await secureStorage.setItemAsync('refreshToken', res.refreshToken);
-      }
+      setIsLoading(true);
+      setError("");
       
-      // Fetch user info
-      const user = await authApi.getMe();
-      setAuthUser(user);
+      const tokens = await authApi.login({ loginName, password });
+      
+      await secureStorage.setItemAsync("accessToken", tokens.accessToken);
+      if (tokens.refreshToken) {
+        await secureStorage.setItemAsync("refreshToken", tokens.refreshToken);
+      }
 
-      router.replace('/(tabs)/wardrobe');
-    } catch (error: any) {
-      const message = error.response?.data?.message || error.message || 'Đăng nhập thất bại';
-      Alert.alert('Lỗi', message);
+      const user = await authApi.getMe();
+      login(user);
+      
+      router.replace("/(tabs)/community");
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Login failed. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background">
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="flex-1"
-      >
-        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
-          <View className="items-center mb-10">
-            <View className="bg-primary/10 p-4 rounded-full mb-4">
-              <Shirt size={48} color="#000" className="text-primary" />
-            </View>
-            <Text className="text-3xl font-bold text-foreground tracking-tight">Smart Wardrobe</Text>
-            <Text className="text-muted-foreground text-base mt-2">Đăng nhập để quản lý tủ đồ của bạn</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "var(--color-sf-bg)" }}>
+      <ScrollView contentContainerClassName="flex-grow justify-center px-6 py-12">
+        <View className="mb-12 items-center">
+          {/* Luxury Logo Placeholder */}
+          <View className="w-16 h-16 bg-sf-accent rounded-full items-center justify-center mb-4">
+            <Text className="text-white text-2xl font-serif">S</Text>
+          </View>
+          <Text className="text-3xl font-serif text-sf-text tracking-wider uppercase">
+            Smart Wardrobe
+          </Text>
+          <Text className="text-sm text-sf-text-2 mt-2 tracking-widest uppercase">
+            Elevate Your Style
+          </Text>
+        </View>
+
+        <View className="gap-6">
+          {error ? <Text className="text-red-500 text-center">{error}</Text> : null}
+          
+          <View>
+            <Text className="text-xs uppercase tracking-wider text-sf-text-2 mb-2 ml-1">
+              Email or Username
+            </Text>
+            <TextInput
+              className="w-full bg-sf-bg-2 px-4 py-4 rounded-xl text-sf-text font-sans text-base"
+              placeholder="Enter your email"
+              placeholderTextColor="#A0A0A0"
+              autoCapitalize="none"
+              value={loginName}
+              onChangeText={setLoginName}
+            />
           </View>
 
-          <View className="space-y-4">
-            <View>
-              <Controller
-                control={control}
-                name="loginName"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <Input
-                    placeholder="Email hoặc tên đăng nhập"
-                    onBlur={onBlur}
-                    onChangeText={onChange}
-                    value={value}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                    className={errors.loginName ? 'border-destructive' : ''}
-                    testID="email-input"
-                  />
-                )}
-              />
-              {errors.loginName && (
-                <Text className="text-destructive text-sm mt-1">{errors.loginName.message}</Text>
-              )}
-            </View>
-
-            <View>
-              <View className="relative justify-center">
-                <Controller
-                  control={control}
-                  name="password"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <Input
-                      placeholder="Mật khẩu"
-                      onBlur={onBlur}
-                      onChangeText={onChange}
-                      value={value}
-                      secureTextEntry={!showPassword}
-                      className={`pr-12 ${errors.password ? 'border-destructive' : ''}`}
-                      testID="password-input"
-                    />
-                  )}
-                />
-                <TouchableOpacity 
-                  className="absolute right-3 top-3 h-6 w-6 items-center justify-center"
-                  onPress={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? <EyeOff size={20} color="#666" /> : <Eye size={20} color="#666" />}
-                </TouchableOpacity>
-              </View>
-              {errors.password && (
-                <Text className="text-destructive text-sm mt-1">{errors.password.message}</Text>
-              )}
-            </View>
-
-            <View className="items-end">
-              <Link href="/(auth)/forgot-password" asChild>
-                <TouchableOpacity>
-                  <Text className="text-primary font-medium text-sm">Quên mật khẩu?</Text>
-                </TouchableOpacity>
-              </Link>
-            </View>
-
-            <Button 
-              onPress={handleSubmit(onSubmit)} 
-              className="w-full mt-4"
-              disabled={loginMutation.isPending}
-              testID="login-button"
-            >
-              {loginMutation.isPending ? 'Đang đăng nhập...' : 'Đăng nhập'}
-            </Button>
+          <View>
+            <Text className="text-xs uppercase tracking-wider text-sf-text-2 mb-2 ml-1">
+              Password
+            </Text>
+            <TextInput
+              className="w-full bg-sf-bg-2 px-4 py-4 rounded-xl text-sf-text font-sans text-base"
+              placeholder="Enter your password"
+              placeholderTextColor="#A0A0A0"
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+            />
           </View>
 
-          <View className="flex-row justify-center mt-8 space-x-1">
-            <Text className="text-muted-foreground">Chưa có tài khoản?</Text>
-            <Link href="/(auth)/register" asChild>
-              <TouchableOpacity>
-                <Text className="text-primary font-bold">Đăng ký ngay</Text>
-              </TouchableOpacity>
-            </Link>
+          <View className="items-end">
+            <Pressable>
+              <Text className="text-sm text-sf-accent">Forgot password?</Text>
+            </Pressable>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+
+          <Pressable
+            className={`w-full bg-sf-text py-4 rounded-xl items-center mt-4 active:opacity-80 ${isLoading ? 'opacity-70' : ''}`}
+            onPress={handleLogin}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text className="text-white font-sans text-base tracking-widest uppercase">
+                Sign In
+              </Text>
+            )}
+          </Pressable>
+        </View>
+
+        <View className="flex-row justify-center mt-12">
+          <Text className="text-sf-text-2">Don't have an account? </Text>
+          <Pressable>
+            <Text className="text-sf-accent font-semibold">Register</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }

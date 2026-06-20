@@ -1,46 +1,39 @@
 import * as SecureStore from 'expo-secure-store';
-
 import { Platform } from 'react-native';
 
-// --- Secure Store (For sensitive tokens) ---
 export const secureStorage = {
   setItemAsync: async (key: string, value: string) => {
-    try {
-      if (Platform.OS === 'web') {
-        if (typeof localStorage !== 'undefined') localStorage.setItem(key, value);
-      } else {
-        await SecureStore.setItemAsync(key, value);
+    if (Platform.OS === 'web') {
+      try {
+        localStorage.setItem(key, value);
+      } catch (e) {
+        console.warn('LocalStorage error', e);
       }
-    } catch (e) {
-      console.error('secureStorage set error', e);
+    } else {
+      await SecureStore.setItemAsync(key, value);
     }
   },
   getItemAsync: async (key: string) => {
-    try {
-      if (Platform.OS === 'web') {
-        if (typeof localStorage !== 'undefined') return localStorage.getItem(key);
+    if (Platform.OS === 'web') {
+      try {
+        return localStorage.getItem(key);
+      } catch (e) {
+        console.warn('LocalStorage error', e);
         return null;
       }
+    } else {
       return await SecureStore.getItemAsync(key);
-    } catch (e) {
-      console.error('secureStorage get error', e);
-      return null;
     }
   },
   deleteItemAsync: async (key: string) => {
-    try {
-      if (Platform.OS === 'web') {
-        if (typeof localStorage !== 'undefined') localStorage.removeItem(key);
-      } else {
-        await SecureStore.deleteItemAsync(key);
+    if (Platform.OS === 'web') {
+      try {
+        localStorage.removeItem(key);
+      } catch (e) {
+        console.warn('LocalStorage error', e);
       }
-    } catch (e) {
-      console.error('secureStorage delete error', e);
+    } else {
+      await SecureStore.deleteItemAsync(key);
     }
   },
-};
-
-export const clearTokens = async () => {
-  await secureStorage.deleteItemAsync('accessToken');
-  await secureStorage.deleteItemAsync('refreshToken');
 };

@@ -1,128 +1,92 @@
-import React, { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, Filter } from 'lucide-react-native';
-import { router } from 'expo-router';
-
-import { useGetMyWardrobeItems, useGetCategories } from '@/features/wardrobe/queries/wardrobe.queries';
-import { WardrobeItemRes } from '@/features/wardrobe/types';
+import React from "react";
+import { View, Text, ScrollView, Pressable, TextInput, Image } from "@/tw";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { MaterialIcons } from "@expo/vector-icons";
 
 export default function WardrobeScreen() {
-  const [selectedCategory, setSelectedCategory] = useState<string | undefined>(undefined);
-  
-  const { data: categoriesData } = useGetCategories();
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading,
-    refetch,
-    isRefetching
-  } = useGetMyWardrobeItems(selectedCategory);
-
-  const categories = categoriesData || [];
-  
-  // Flatten pages
-  const items = data?.pages.flatMap(page => page.items) || [];
-
-  const renderItem = ({ item }: { item: WardrobeItemRes }) => (
-    <TouchableOpacity 
-      style={{ flex: 1, margin: 4, aspectRatio: 1, backgroundColor: '#F0F0F0', borderRadius: 8, overflow: 'hidden' }}
-      onPress={() => router.push(`/(tabs)/wardrobe/${item.id}`)}
-    >
-      <Image source={{ uri: item.imageUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-    </TouchableOpacity>
-  );
+  // In the future, this will be populated via API
+  const items: any[] = [];
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      {/* Header */}
-      <View className="flex-row items-center justify-between px-4 py-3">
-        <Text className="text-2xl font-bold text-foreground">Tủ Đồ</Text>
-        <TouchableOpacity>
-          <Filter size={24} color="#000" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Category Filter */}
-      <View>
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={[{ id: 'all', name: 'Tất cả', slug: undefined }, ...categories]}
-          keyExtractor={item => item.id}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 8 }}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              onPress={() => setSelectedCategory(item.slug)}
-              className={`px-4 py-2 mr-2 rounded-full border ${selectedCategory === item.slug || (!selectedCategory && item.id === 'all') ? 'bg-primary border-primary' : 'bg-background border-input'}`}
-            >
-              <Text className={selectedCategory === item.slug || (!selectedCategory && item.id === 'all') ? 'text-primary-foreground font-medium' : 'text-foreground'}>
-                {item.name}
-              </Text>
-            </TouchableOpacity>
-          )}
-        />
-      </View>
-
-      {/* Item List */}
-      {isLoading ? (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: "var(--color-background)" }}>
+      {/* TopAppBar */}
+      <View className="flex-row justify-between items-center px-5 py-4 bg-surface border-b border-outline-variant">
+        <View className="flex-row items-center gap-2">
+          <MaterialIcons name="menu" size={24} color="var(--color-primary)" />
         </View>
-      ) : (
-        <FlatList
-          data={items}
-          keyExtractor={(item) => item.id}
-          numColumns={3}
-          contentContainerStyle={{ padding: 4 }}
-          renderItem={renderItem}
-          onEndReached={() => {
-            if (hasNextPage && !isFetchingNextPage) {
-              fetchNextPage();
-            }
-          }}
-          onEndReachedThreshold={0.5}
-          onRefresh={refetch}
-          refreshing={isRefetching}
-          ListEmptyComponent={
-            <View className="flex-1 justify-center items-center py-20">
-              <Text className="text-muted-foreground">Chưa có trang phục nào trong tủ đồ.</Text>
-            </View>
-          }
-          ListFooterComponent={
-            isFetchingNextPage ? (
-              <View className="py-4">
-                <ActivityIndicator />
-              </View>
-            ) : null
-          }
-        />
-      )}
+        <Text className="font-display-xl text-[32px] tracking-tighter text-primary">CLOSY</Text>
+        <View className="w-8 h-8 rounded-full bg-surface-container overflow-hidden border border-outline-variant">
+          <Image
+            source={{ uri: "https://via.placeholder.com/150" }}
+            className="w-full h-full object-cover"
+          />
+        </View>
+      </View>
 
-      {/* Floating Action Button */}
-      <TouchableOpacity
-        style={{
-          position: 'absolute',
-          bottom: 24,
-          right: 24,
-          width: 56,
-          height: 56,
-          borderRadius: 28,
-          backgroundColor: '#000', // primary
-          justifyContent: 'center',
-          alignItems: 'center',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.25,
-          shadowRadius: 3.84,
-          elevation: 5,
-        }}
-        onPress={() => router.push('/(tabs)/wardrobe/upload')}
-      >
-        <Plus size={24} color="#FFF" />
-      </TouchableOpacity>
+      <ScrollView contentContainerClassName="px-5 pt-8 pb-24" showsVerticalScrollIndicator={false}>
+        {/* Title Section */}
+        <View className="mb-8">
+          <Text className="font-display-xl text-[48px] uppercase leading-none mb-2 text-on-background">Wardrobe</Text>
+          <Text className="font-label-caps text-[12px] text-secondary uppercase tracking-widest">
+            Curation of your essentials. Storing {items.length} items.
+          </Text>
+        </View>
+
+        {/* Search & Filter Controls */}
+        <View className="mb-8 space-y-6">
+          <View className="flex-row items-center bg-surface-container-low border-b border-outline-variant px-2 py-3 mb-6">
+            <MaterialIcons name="search" size={20} color="var(--color-secondary)" style={{ marginRight: 12 }} />
+            <TextInput
+              className="flex-1 bg-transparent border-none font-label-caps text-[12px] text-primary uppercase"
+              placeholder="FIND AN ITEM..."
+              placeholderTextColor="var(--color-outline)"
+            />
+          </View>
+
+          <View className="flex-row items-center justify-between">
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-4 pb-2">
+              <Pressable className="border-b-2 border-primary pb-1 mr-4">
+                <Text className="font-label-caps text-[12px] text-primary uppercase">ALL</Text>
+              </Pressable>
+              <Pressable className="pb-1 mr-4">
+                <Text className="font-label-caps text-[12px] text-secondary uppercase">SHIRTS</Text>
+              </Pressable>
+              <Pressable className="pb-1 mr-4">
+                <Text className="font-label-caps text-[12px] text-secondary uppercase">JACKETS</Text>
+              </Pressable>
+              <Pressable className="pb-1 mr-4">
+                <Text className="font-label-caps text-[12px] text-secondary uppercase">PANTS</Text>
+              </Pressable>
+              <Pressable className="pb-1">
+                <Text className="font-label-caps text-[12px] text-secondary uppercase">ACCESSORIES</Text>
+              </Pressable>
+            </ScrollView>
+            <Pressable className="ml-4 p-2 border border-outline-variant rounded-lg">
+              <MaterialIcons name="tune" size={20} color="var(--color-secondary)" />
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Bento/Editorial Grid */}
+        {items.length > 0 ? (
+          <View className="flex-row flex-wrap justify-between">
+            {/* Grid will map over items here */}
+          </View>
+        ) : (
+          <View className="items-center justify-center py-20">
+            <MaterialIcons name="inventory-2" size={48} color="var(--color-outline-variant)" />
+            <Text className="font-body-md text-secondary mt-4">Your wardrobe is empty.</Text>
+            <Text className="font-label-sm text-outline mt-1 text-center px-10">
+              Tap the + button to add your first item to the closet.
+            </Text>
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Floating Action Button (FAB) */}
+      <Pressable className="absolute bottom-24 right-5 w-14 h-14 bg-primary rounded-full items-center justify-center shadow-lg active:opacity-80">
+        <MaterialIcons name="add" size={24} color="var(--color-on-primary)" />
+      </Pressable>
     </SafeAreaView>
   );
 }

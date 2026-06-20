@@ -1,57 +1,27 @@
 export enum Gender {
-  MALE = 1,
-  FEMALE = 2,
-  OTHER = 3,
-}
-
-export interface LoginReq {
-  loginName: string; // username or email
-  password: string;
-}
-
-export interface RegisterReq {
-  username: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-  firstName: string;
-  lastName?: string;
-  dateOfBirth: string; // YYYY-MM-DD
-  address: string;
-  gender: Gender;
-}
-
-export interface ConfirmRegisterOtpReq {
-  email: string;
-  otpCode: string;
-}
-
-export interface SendForgotPasswordOtpReq {
-  email: string;
-}
-
-export interface ConfirmForgotPasswordOtpReq {
-  email: string;
-  otpCode: string;
-}
-
-export interface ResetPasswordReq {
-  newPassword: string;
-  confirmPassword: string;
-  logoutAllDevices: boolean;
-}
-
-export interface AuthTokenRes {
-  accessToken: string;
-  refreshToken?: string;
+  MALE = 'MALE',
+  FEMALE = 'FEMALE',
+  OTHER = 'OTHER',
 }
 
 export interface UserRes {
   id: string;
-  username: string;
   email: string;
-  firstName: string;
-  lastName: string;
+  username: string;
+  firstName?: string;
+  lastName?: string;
+  gender?: Gender;
+  dateOfBirth?: string;
   avatarUrl?: string;
-  roles?: string[];
+  createdAt: string;
+}
+
+export interface LoginReq {
+  loginName: string;
+  password?: string;
+}
+
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken?: string;
 }

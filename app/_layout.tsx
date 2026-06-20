@@ -1,72 +1,46 @@
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import 'react-native-reanimated';
-import '../global.css';
+import { Stack } from "expo-router";
+import { useEffect } from "react";
+import { usePathname } from "expo-router";
+import { useFonts } from "expo-font";
+import { BodoniModa_400Regular } from "@expo-google-fonts/bodoni-moda";
+import { HankenGrotesk_400Regular, HankenGrotesk_600SemiBold } from "@expo-google-fonts/hanken-grotesk";
+import * as SplashScreen from "expo-splash-screen";
+import "../src/global.css";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-import { useColorScheme } from '@/components/useColorScheme';
-import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
-import { queryClient, asyncStoragePersister } from '@/lib/queryClient';
-import { ErrorBoundary as GlobalErrorBoundary } from '@/components/ui/ErrorBoundary';
-import * as Sentry from '@sentry/react-native';
-import { initSentry } from '@/lib/sentry';
-
-initSentry();
-
-export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: '(tabs)',
-};
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
-function RootLayout() {
+const queryClient = new QueryClient();
+
+export default function RootLayout() {
+  const pathname = usePathname();
+
   const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    BodoniModa: BodoniModa_400Regular,
+    HankenGrotesk: HankenGrotesk_400Regular,
+    HankenGroteskSemiBold: HankenGrotesk_600SemiBold,
   });
 
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
-    if (error) throw error;
-  }, [error]);
-
-  useEffect(() => {
-    if (loaded) {
+    if (loaded || error) {
       SplashScreen.hideAsync();
     }
-  }, [loaded]);
+  }, [loaded, error]);
 
-  if (!loaded) {
+  if (!loaded && !error) {
     return null;
   }
 
   return (
-    <GlobalErrorBoundary>
-      <PersistQueryClientProvider
-        client={queryClient}
-        persistOptions={{ persister: asyncStoragePersister }}
-      >
-        <RootLayoutNav />
-      </PersistQueryClientProvider>
-    </GlobalErrorBoundary>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryClientProvider client={queryClient}>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="outfits/create" />
+        </Stack>
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }
-
-function RootLayoutNav() {
-  const colorScheme = useColorScheme();
-
-  return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-      </Stack>
-    </ThemeProvider>
-  );
-}
-
-export default RootLayout;

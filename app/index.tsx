@@ -1,31 +1,21 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { Redirect } from 'expo-router';
 import { useAuthStore } from '@/store/useAuthStore';
 import { secureStorage } from '@/lib/storage';
 import { authApi } from '@/features/auth/api/auth.api';
-import * as Notifications from 'expo-notifications';
-import { registerForPushNotificationsAsync } from '@/lib/notifications';
+import { registerForPushNotificationsAsync, setupNotificationListeners } from '@/lib/notifications';
 
 export default function Index() {
   const { isAuthenticated, login, logout } = useAuthStore();
   const [isInitializing, setIsInitializing] = useState(true);
-  const notificationListener = useRef<Notifications.Subscription>();
-  const responseListener = useRef<Notifications.Subscription>();
 
   useEffect(() => {
     const initApp = async () => {
       try {
         // Register Push Notifications
-        registerForPushNotificationsAsync().then(token => console.log('Push Token:', token));
-
-        // Listeners
-        notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-          console.log('Notification Received:', notification);
-        });
-
-        responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-          console.log('Notification Response:', response);
+        registerForPushNotificationsAsync().then((token: string | null) => {
+          if (token) console.log('Push Token:', token);
         });
 
         const token = await secureStorage.getItemAsync('accessToken');
@@ -44,10 +34,10 @@ export default function Index() {
     };
     
     initApp();
+    const cleanupNotifications = setupNotificationListeners();
 
     return () => {
-      if (notificationListener.current) Notifications.removeNotificationSubscription?.(notificationListener.current);
-      if (responseListener.current) Notifications.removeNotificationSubscription?.(responseListener.current);
+      cleanupNotifications?.();
     };
   }, [login, logout]);
 
@@ -60,7 +50,7 @@ export default function Index() {
   }
 
   if (isAuthenticated) {
-    return <Redirect href="/(tabs)/wardrobe" />;
+    return <Redirect href="/(tabs)/community" />;
   }
 
   return <Redirect href="/(auth)/login" />;

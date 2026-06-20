@@ -1,0 +1,32 @@
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css";
+
+@layer theme {
+  @theme {
+    /* Stitch Mobile Photo Gallery UI Colors */
+    --color-primary: #000000;
+    --color-on-primary: #ffffff;
+    --color-background: #f9f9f9;
+    --color-on-background: #1a1c1c;
+    --color-surface: #f9f9f9;
+    --color-on-surface: #1a1c1c;
+    --color-surface-container: #eeeeee;
+    --color-surface-container-low: #f3f3f4;
+    --color-outline-variant: #cfc4c5;
+    --color-outline: #7e7576;
+    --color-secondary: #5d5f5f;
+    --color-on-secondary: #ffffff;
+    --color-secondary-container: #dcdddd;
+    --color-tertiary: #000000;
+
+    /* Custom Fonts */
+    --font-display-xl: 'BodoniModa', serif;
+    --font-headline-md: 'BodoniModa', serif;
+    --font-headline-lg: 'BodoniModa', serif;
+    --font-body-md: 'HankenGrotesk', sans-serif;
+    --font-body-lg: 'HankenGrotesk', sans-serif;
+    --font-label-sm: 'HankenGrotesk', sans-serif;
+    --font-label-caps: 'HankenGrotesk', sans-serif;
+  }
+}
