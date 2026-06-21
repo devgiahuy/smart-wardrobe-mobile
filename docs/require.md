@@ -87,23 +87,23 @@ Mọi đề xuất kiến trúc phải tương thích với stack trên.
 
 # Target Folder Structure
 
-Mobile App phải tuân thủ cấu trúc sau:
+Mobile App phải tuân thủ cấu trúc Feature-Based Architecture:
 
-src/
-├── app/
-├── features/
-│   ├── auth/
-│   ├── wardrobe/
-│   ├── outfit/
-│   └── profile/
-├── components/
-├── services/
-├── hooks/
-├── stores/
-├── types/
-├── lib/
-├── constants/
-└── utils/
+```text
+smart-wardrobe-mobile/
+├── app/                  # Expo Router
+├── src/
+│   ├── components/       # Global UI components
+│   ├── features/         # Feature-based logic
+│   │   ├── auth/
+│   │   ├── wardrobe/
+│   │   ├── outfit/
+│   │   └── profile/
+│   ├── lib/              # Core configs (Axios, Sentry, Storage)
+│   ├── constants/
+│   ├── store/            # Global state (Zustand)
+│   └── utils/
+```
 
 Khi phân tích source Web, hãy map toàn bộ chức năng vào cấu trúc này.
 
@@ -447,8 +447,6 @@ Desktop Layout
 
 Tables
 
-Hover Components
-
 Desktop Modals
 
 Responsive Containers
@@ -626,37 +624,13 @@ Release
 
 # Final Deliverables
 
-Xuất báo cáo gồm:
+Xuất báo cáo gồm một bản phân tích toàn diện (Mobile Architecture Plan):
 
-1. Executive Summary
-
-2. Feature Inventory
-
-3. Route Mapping
-
-4. Screen Inventory
-
-5. API Inventory
-
-6. Zustand Store Design
-
-7. Query Design
-
-8. Form Design
-
-9. Reusable Logic
-
-10. Components To Rewrite
-
-11. Mobile Architecture
-
-12. Native Features
-
-13. Technical Risks
-
-14. Development Roadmap
-
-15. Estimated Timeline
+- Cấu trúc thư mục (Feature-Based)
+- API & State Management
+- UX/UI Adaptation (lưu ý xóa bỏ Hover, đổi sang Pressable, thiết kế Bottom Sheet cho Drag & Drop trên màn hình hẹp)
+- Native Features (Camera, Secure Store)
+- Roadmap triển khai
 
 KHÔNG viết code.
 

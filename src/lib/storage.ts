@@ -1,39 +1,55 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
+import { StateStorage } from 'zustand/middleware';
 
+// -----------------------------------------------------------------------------
+// 1. Async Storage (Compatible with Expo Go)
+// Used for: Non-sensitive app state (Theme, User Profile caching, etc.)
+// -----------------------------------------------------------------------------
+export const zustandStorage: StateStorage = {
+  setItem: async (name, value) => {
+    return await AsyncStorage.setItem(name, value);
+  },
+  getItem: async (name) => {
+    const value = await AsyncStorage.getItem(name);
+    return value ?? null;
+  },
+  removeItem: async (name) => {
+    return await AsyncStorage.removeItem(name);
+  },
+};
+
+// -----------------------------------------------------------------------------
+// 2. Secure Storage (Encrypted, Asynchronous)
+// Used for: Sensitive data like Access Token, Refresh Token
+// -----------------------------------------------------------------------------
 export const secureStorage = {
-  setItemAsync: async (key: string, value: string) => {
-    if (Platform.OS === 'web') {
-      try {
-        localStorage.setItem(key, value);
-      } catch (e) {
-        console.warn('LocalStorage error', e);
-      }
-    } else {
+  setItem: async (key: string, value: string): Promise<void> => {
+    try {
       await SecureStore.setItemAsync(key, value);
+    } catch (error) {
+      console.error(`SecureStore Error saving ${key}:`, error);
     }
   },
-  getItemAsync: async (key: string) => {
-    if (Platform.OS === 'web') {
-      try {
-        return localStorage.getItem(key);
-      } catch (e) {
-        console.warn('LocalStorage error', e);
-        return null;
-      }
-    } else {
+  getItem: async (key: string): Promise<string | null> => {
+    try {
       return await SecureStore.getItemAsync(key);
+    } catch (error) {
+      console.error(`SecureStore Error getting ${key}:`, error);
+      return null;
     }
   },
-  deleteItemAsync: async (key: string) => {
-    if (Platform.OS === 'web') {
-      try {
-        localStorage.removeItem(key);
-      } catch (e) {
-        console.warn('LocalStorage error', e);
-      }
-    } else {
+  removeItem: async (key: string): Promise<void> => {
+    try {
       await SecureStore.deleteItemAsync(key);
+    } catch (error) {
+      console.error(`SecureStore Error removing ${key}:`, error);
     }
   },
+};
+
+// Helper keys for tokens
+export const TOKEN_KEYS = {
+  ACCESS_TOKEN: 'ACCESS_TOKEN',
+  REFRESH_TOKEN: 'REFRESH_TOKEN',
 };

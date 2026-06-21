@@ -1,71 +1,45 @@
-import { Tabs } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MaterialIcons, MaterialCommunityIcons, FontAwesome5, Feather } from "@expo/vector-icons";
+import { Tabs } from 'expo-router';
+import { Shirt, Sparkles, LayoutGrid, User } from 'lucide-react-native';
 
-export default function TabsLayout() {
-  const insets = useSafeAreaInsets();
-
+export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#000000",
-        tabBarInactiveTintColor: "#666666",
-        tabBarShowLabel: true,
-        tabBarLabelStyle: {
-          fontFamily: "HankenGrotesk",
-          textTransform: "uppercase",
-          fontSize: 10,
-          letterSpacing: 0.5,
-          marginTop: 2,
-        },
+        tabBarActiveTintColor: '#000000',
+        tabBarInactiveTintColor: '#7e7576',
         tabBarStyle: {
-          backgroundColor: "#F2F2F2",
-          borderTopWidth: 0,
-          elevation: 10,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-          minHeight: 65 + (insets.bottom > 0 ? insets.bottom : 10),
-          paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
-          paddingTop: 8,
+          backgroundColor: '#ffffff',
+          borderTopColor: '#eeeeee',
         },
       }}
     >
       <Tabs.Screen
-        name="wardrobe/index"
+        name="wardrobe"
         options={{
-          title: "Wardrobe",
-          tabBarIcon: ({ color }) => <MaterialCommunityIcons name="hanger" size={28} color={color} />,
+          title: 'Tủ Đồ',
+          tabBarIcon: ({ color }) => <Shirt color={color} size={24} />,
         }}
       />
       <Tabs.Screen
-        name="stylist/index"
+        name="outfits"
         options={{
-          title: "Stylist",
-          tabBarIcon: ({ color }) => <MaterialIcons name="auto-awesome" size={26} color={color} />,
+          title: 'Phối Đồ',
+          tabBarIcon: ({ color }) => <LayoutGrid color={color} size={24} />,
         }}
       />
       <Tabs.Screen
-        name="outfit/index"
+        name="ai-stylist"
         options={{
-          title: "Outfit",
-          tabBarIcon: ({ color }) => <FontAwesome5 name="question" size={24} color={color} />,
+          title: 'AI Stylist',
+          tabBarIcon: ({ color }) => <Sparkles color={color} size={24} />,
         }}
       />
       <Tabs.Screen
-        name="community/index"
+        name="profile"
         options={{
-          title: "Community",
-          tabBarIcon: ({ color }) => <MaterialIcons name="group" size={28} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="market/index"
-        options={{
-          title: "Market",
-          tabBarIcon: ({ color }) => <Feather name="shopping-bag" size={24} color={color} />,
+          title: 'Cá Nhân',
+          tabBarIcon: ({ color }) => <User color={color} size={24} />,
         }}
       />
     </Tabs>

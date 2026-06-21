@@ -1,92 +1,65 @@
-import React from "react";
-import { View, Text, ScrollView, Pressable, TextInput, Image } from "@/tw";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { MaterialIcons } from "@expo/vector-icons";
+import React from 'react';
+import { ActivityIndicator } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { useRouter } from 'expo-router';
+import { useMyWardrobeItems } from '../../../src/features/wardrobe/queries/wardrobe.queries';
+import { WardrobeCard } from '../../../src/features/wardrobe/components/WardrobeCard';
+import { Plus } from 'lucide-react-native';
+import { Pressable } from '../../../src/tw';
+import { View, Text } from '../../../src/tw';
 
 export default function WardrobeScreen() {
-  // In the future, this will be populated via API
-  const items: any[] = [];
+  const router = useRouter();
+  const { data: items, isLoading, error, refetch, isRefetching } = useMyWardrobeItems();
+
+  if (isLoading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator size="large" color="#000000" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background">
+        <Text className="text-red-500 font-body-md">Đã có lỗi xảy ra khi tải tủ đồ</Text>
+        <Pressable onPress={() => refetch()} className="mt-4 bg-primary px-4 py-2 rounded-lg">
+          <Text className="text-on-primary font-body-md">Thử lại</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "var(--color-background)" }}>
-      {/* TopAppBar */}
-      <View className="flex-row justify-between items-center px-5 py-4 bg-surface border-b border-outline-variant">
-        <View className="flex-row items-center gap-2">
-          <MaterialIcons name="menu" size={24} color="var(--color-primary)" />
-        </View>
-        <Text className="font-display-xl text-[32px] tracking-tighter text-primary">CLOSY</Text>
-        <View className="w-8 h-8 rounded-full bg-surface-container overflow-hidden border border-outline-variant">
-          <Image
-            source={{ uri: "https://via.placeholder.com/150" }}
-            className="w-full h-full object-cover"
+    <View className="flex-1 bg-background">
+      <FlashList
+        data={items || []}
+        renderItem={({ item }) => (
+          <WardrobeCard 
+            item={item} 
+            onPress={() => router.push(`/wardrobe/${item.id}`)} 
           />
-        </View>
-      </View>
-
-      <ScrollView contentContainerClassName="px-5 pt-8 pb-24" showsVerticalScrollIndicator={false}>
-        {/* Title Section */}
-        <View className="mb-8">
-          <Text className="font-display-xl text-[48px] uppercase leading-none mb-2 text-on-background">Wardrobe</Text>
-          <Text className="font-label-caps text-[12px] text-secondary uppercase tracking-widest">
-            Curation of your essentials. Storing {items.length} items.
-          </Text>
-        </View>
-
-        {/* Search & Filter Controls */}
-        <View className="mb-8 space-y-6">
-          <View className="flex-row items-center bg-surface-container-low border-b border-outline-variant px-2 py-3 mb-6">
-            <MaterialIcons name="search" size={20} color="var(--color-secondary)" style={{ marginRight: 12 }} />
-            <TextInput
-              className="flex-1 bg-transparent border-none font-label-caps text-[12px] text-primary uppercase"
-              placeholder="FIND AN ITEM..."
-              placeholderTextColor="var(--color-outline)"
-            />
-          </View>
-
-          <View className="flex-row items-center justify-between">
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-4 pb-2">
-              <Pressable className="border-b-2 border-primary pb-1 mr-4">
-                <Text className="font-label-caps text-[12px] text-primary uppercase">ALL</Text>
-              </Pressable>
-              <Pressable className="pb-1 mr-4">
-                <Text className="font-label-caps text-[12px] text-secondary uppercase">SHIRTS</Text>
-              </Pressable>
-              <Pressable className="pb-1 mr-4">
-                <Text className="font-label-caps text-[12px] text-secondary uppercase">JACKETS</Text>
-              </Pressable>
-              <Pressable className="pb-1 mr-4">
-                <Text className="font-label-caps text-[12px] text-secondary uppercase">PANTS</Text>
-              </Pressable>
-              <Pressable className="pb-1">
-                <Text className="font-label-caps text-[12px] text-secondary uppercase">ACCESSORIES</Text>
-              </Pressable>
-            </ScrollView>
-            <Pressable className="ml-4 p-2 border border-outline-variant rounded-lg">
-              <MaterialIcons name="tune" size={20} color="var(--color-secondary)" />
-            </Pressable>
-          </View>
-        </View>
-
-        {/* Bento/Editorial Grid */}
-        {items.length > 0 ? (
-          <View className="flex-row flex-wrap justify-between">
-            {/* Grid will map over items here */}
-          </View>
-        ) : (
-          <View className="items-center justify-center py-20">
-            <MaterialIcons name="inventory-2" size={48} color="var(--color-outline-variant)" />
-            <Text className="font-body-md text-secondary mt-4">Your wardrobe is empty.</Text>
-            <Text className="font-label-sm text-outline mt-1 text-center px-10">
-              Tap the + button to add your first item to the closet.
-            </Text>
+        )}
+        estimatedItemSize={180}
+        numColumns={2}
+        contentContainerStyle={{ padding: 8 }}
+        onRefresh={refetch}
+        refreshing={isRefetching}
+        ListEmptyComponent={() => (
+          <View className="flex-1 items-center justify-center py-20">
+            <Text className="font-body-md text-secondary">Tủ đồ của bạn đang trống</Text>
           </View>
         )}
-      </ScrollView>
+      />
 
-      {/* Floating Action Button (FAB) */}
-      <Pressable className="absolute bottom-24 right-5 w-14 h-14 bg-primary rounded-full items-center justify-center shadow-lg active:opacity-80">
-        <MaterialIcons name="add" size={24} color="var(--color-on-primary)" />
+      {/* Floating Action Button */}
+      <Pressable
+        onPress={() => router.push('/wardrobe/upload')}
+        className="absolute bottom-6 right-6 w-14 h-14 bg-primary rounded-full items-center justify-center shadow-lg"
+      >
+        <Plus color="#ffffff" size={28} />
       </Pressable>
-    </SafeAreaView>
+    </View>
   );
 }

@@ -1,42 +1,24 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { secureStorage } from './storage';
-import { router } from 'expo-router';
+import { secureStorage, TOKEN_KEYS } from './storage';
+import { useAuthStore } from '../store/useAuthStore';
 
-// Default to localhost 8080 for Android emulator, or EXPO_PUBLIC_API_URL
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:8080/api/v1';
+// Get API URL from env variables
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
 
-const api = axios.create({
-  baseURL: BASE_URL,
-  timeout: 15000,
+export const axiosInstance = axios.create({
+  baseURL: API_URL,
+  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-api.interceptors.request.use(
-  async (config: InternalAxiosRequestConfig) => {
-    try {
-      const token = await secureStorage.getItemAsync('accessToken');
-      if (token && config.headers) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    } catch (error) {
-      console.warn('Error reading token from storage', error);
-    }
-    return config;
-  },
-  (error: any) => {
-    return Promise.reject(error);
-  }
-);
-
+// Flag to prevent multiple concurrent refresh token requests
 let isRefreshing = false;
-let failedQueue: Array<{
-  resolve: (value?: unknown) => void;
-  reject: (reason?: any) => void;
-}> = [];
+// Queue of failed requests to be retried after token refresh
+let failedQueue: { resolve: (value?: unknown) => void; reject: (reason?: any) => void }[] = [];
 
-const processQueue = (error: any, token: string | null = null) => {
+const processQueue = (error: AxiosError | null, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);
@@ -47,13 +29,32 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
-api.interceptors.response.use(
-  (response: any) => response,
+// 1. Request Interceptor: Attach Access Token
+axiosInstance.interceptors.request.use(
+  async (config: InternalAxiosRequestConfig) => {
+    const accessToken = await secureStorage.getItem(TOKEN_KEYS.ACCESS_TOKEN);
+    if (accessToken && config.headers) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// 2. Response Interceptor: Handle 401 & Refresh Token
+axiosInstance.interceptors.response.use(
+  (response) => {
+    return response;
+  },
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
+    // If error is 401 and we haven't already retried this request
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       if (isRefreshing) {
+        // If already refreshing, queue this request
         return new Promise(function (resolve, reject) {
           failedQueue.push({ resolve, reject });
         })
@@ -61,7 +62,7 @@ api.interceptors.response.use(
             if (originalRequest.headers) {
               originalRequest.headers.Authorization = 'Bearer ' + token;
             }
-            return api(originalRequest);
+            return axiosInstance(originalRequest);
           })
           .catch((err) => {
             return Promise.reject(err);
@@ -71,39 +72,42 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
+      const refreshToken = await secureStorage.getItem(TOKEN_KEYS.REFRESH_TOKEN);
+
+      if (!refreshToken) {
+        // No refresh token available, logout user immediately
+        useAuthStore.getState().logout();
+        return Promise.reject(error);
+      }
+
       try {
-        const refreshToken = await secureStorage.getItemAsync('refreshToken');
-        if (!refreshToken) {
-          throw new Error('No refresh token available');
+        // Call refresh token endpoint (using plain axios to avoid infinite loop)
+        const response = await axios.post(`${API_URL}/auth/refresh-token`, {
+          refreshToken,
+        });
+
+        const newAccessToken = response.data.accessToken;
+        const newRefreshToken = response.data.refreshToken; // Optional if BE rotates refresh token
+
+        // Save new tokens
+        await secureStorage.setItem(TOKEN_KEYS.ACCESS_TOKEN, newAccessToken);
+        if (newRefreshToken) {
+          await secureStorage.setItem(TOKEN_KEYS.REFRESH_TOKEN, newRefreshToken);
         }
 
-        const res = await axios.post(`${BASE_URL}/auth/refresh-token`, { refreshToken });
-        
-        if (res.data?.data?.accessToken) {
-          const newAccessToken = res.data.data.accessToken;
-          const newRefreshToken = res.data.data.refreshToken;
-          
-          await secureStorage.setItemAsync('accessToken', newAccessToken);
-          if (newRefreshToken) {
-            await secureStorage.setItemAsync('refreshToken', newRefreshToken);
-          }
-
-          if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-          }
-          
-          processQueue(null, newAccessToken);
-          return api(originalRequest);
-        } else {
-          throw new Error('Invalid refresh token response');
+        axiosInstance.defaults.headers.common['Authorization'] = 'Bearer ' + newAccessToken;
+        if (originalRequest.headers) {
+          originalRequest.headers.Authorization = 'Bearer ' + newAccessToken;
         }
+
+        processQueue(null, newAccessToken);
+        return axiosInstance(originalRequest);
       } catch (refreshError) {
-        processQueue(refreshError, null);
-        await secureStorage.deleteItemAsync('accessToken');
-        await secureStorage.deleteItemAsync('refreshToken');
+        // Refresh token failed (e.g. expired or invalid)
+        processQueue(refreshError as AxiosError, null);
         
-        // Redirect to login if token refresh fails
-        router.replace('/(auth)/login');
+        // Clear auth state
+        useAuthStore.getState().logout();
         
         return Promise.reject(refreshError);
       } finally {
@@ -114,5 +118,3 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
-export default api;

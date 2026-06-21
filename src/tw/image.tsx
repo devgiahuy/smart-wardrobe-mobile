@@ -6,6 +6,8 @@ import { Image as RNImage } from "expo-image";
 
 const AnimatedExpoImage = Animated.createAnimatedComponent(RNImage);
 
+export type ImageProps = React.ComponentProps<typeof RNImage>;
+
 function CSSImage(props: React.ComponentProps<typeof AnimatedExpoImage>) {
   // @ts-expect-error: Remap objectFit style to contentFit property
   const { objectFit, objectPosition, ...style } =
@@ -13,8 +15,8 @@ function CSSImage(props: React.ComponentProps<typeof AnimatedExpoImage>) {
 
   return (
     <AnimatedExpoImage
-      contentFit={objectFit}
-      contentPosition={objectPosition}
+      contentFit={objectFit as any}
+      contentPosition={objectPosition as any}
       {...props}
       source={
         typeof props.source === "string" ? { uri: props.source } : props.source
